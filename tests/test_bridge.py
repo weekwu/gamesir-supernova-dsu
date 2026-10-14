@@ -125,7 +125,8 @@ class StreamTests(unittest.TestCase):
             def server():
                 try:bridge.main()
                 except BaseException as error:errors.append(error)
-            with mock.patch.object(bridge,'Hid',FakeHid),mock.patch.object(sys,'argv',argv),contextlib.redirect_stdout(io.StringIO()):
+            # Simulate the coarse monotonic clock on older Windows Python versions.
+            with mock.patch.object(bridge,'Hid',FakeHid),mock.patch.object(sys,'argv',argv),mock.patch.object(time,'monotonic_ns',return_value=123000),contextlib.redirect_stdout(io.StringIO()):
                 thread=threading.Thread(target=server);thread.start()
                 client=socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
                 if hasattr(socket,'SIO_UDP_CONNRESET'):client.ioctl(socket.SIO_UDP_CONNRESET,False)

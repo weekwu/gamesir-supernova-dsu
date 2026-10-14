@@ -130,7 +130,9 @@ def main():
     hid = Hid()
     clients, requests = {}, {}
     count, sent, last_report, last_status, motion = 0, 0, 0, 0, None
-    start = time.monotonic()
+    # perf_counter uses Windows' high-resolution clock even on Python 3.10.
+    # Older monotonic implementations can repeat timestamps at an 8 ms cadence.
+    start = time.perf_counter()
     options = read_options(args.options_file)
     last_options = 0
     motion_filter = MotionFilter()
@@ -140,8 +142,8 @@ def main():
             hid.command(0x40, b'\x01')
             hid.command(0x03, b'\x30')
         print(f'DSU ready on 127.0.0.1:{args.port}; keep BetterJoy closed.', flush=True)
-        while not args.duration or time.monotonic()-start < args.duration:
-            now = time.monotonic()
+        while not args.duration or time.perf_counter()-start < args.duration:
+            now = time.perf_counter()
             if now-last_options >= .2:
                 fresh_options = read_options(args.options_file)
                 if fresh_options != options: motion_filter = MotionFilter()
@@ -171,7 +173,7 @@ def main():
                 clients.clear()
                 print('Receiver disconnected. Waiting for the same Switch-mode receiver.', flush=True)
                 while True:
-                    if args.duration and time.monotonic()-start >= args.duration: return
+                    if args.duration and time.perf_counter()-start >= args.duration: return
                     time.sleep(.5)
                     try:
                         hid.open()
@@ -180,7 +182,7 @@ def main():
                         break
                     except RuntimeError: hid.close()
                 continue
-            now = time.monotonic()
+            now = time.perf_counter()
             clients = {a:t for a,t in clients.items() if now-t < 5}
             if len(b) >= 49 and b[0] == 0x30:
                 count = (count+1)&0xffffffff
@@ -189,7 +191,7 @@ def main():
                 # Cemu 2.6's SDL 2.30.3 uses 936/13371 with the measured zero offsets.
                 # The previous mode uses the reported sensitivity coefficient, 15335.
                 gyro_scale = args.gyro_scale if args.gyro_scale is not None else 936/(13371 if options['mode']=='cemu26' else 15335)
-                payload, motion = pad_payload(b,count,time.monotonic_ns()//1000,args.acc_scale,gyro_scale,args.gyro_bias,motion_filter,dt,options)
+                payload, motion = pad_payload(b,count,time.perf_counter_ns()//1000,args.acc_scale,gyro_scale,args.gyro_bias,motion_filter,dt,options)
                 out = packet(0x100002,payload)
                 for a in clients:
                     udp.sendto(out,a); sent += 1
