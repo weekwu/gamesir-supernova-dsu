@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.py[cod]
+settings.json
+*.tmp
+*.log
+*.lnk
+*.dll
+*.zip
+status.json
+backups/
